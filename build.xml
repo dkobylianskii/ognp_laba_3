@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<project name="HelloWorld" default="run">
+    <property file="build.properties"/>
+
+    <taskdef resource="net/sf/antcontrib/antcontrib.properties">
+        <classpath>
+            <pathelement location="lib/ant-contrib-1.0b3.jar"/>
+        </classpath>
+    </taskdef>
+
+    <path id="junit.class.path">
+        <pathelement location="${build.dir}/classes" />
+        <pathelement location = "lib/junit-4.0.jar" />
+        <pathelement location = "lib/testng-7.1.0.jar" />
+    </path>
+
+    <!-- define all targets -->
+
+    <target name="clean" unless="changed">
+        <delete dir="${build.dir}"/>
+        <delete dir="src-alt"/>
+    </target>
+
+    <target name="mkdir">
+        <mkdir dir="${build.dir}/classes" />
+        <mkdir dir="${build.dir}/jar" />
+    </target>
+
+    <target name="native2ascii" depends="clean, mkdir">
+        <condition property="src.dir" value="${src.alt}" else="${src.default}">
+            <isset property="changed"/>
+        </condition>
+        <native2ascii src="${src.dir}/resources" dest="${build.dir}/classes"/>
+    </target>
+
+    <!-- Compiles the java code (including the usage of library for JUnit -->
+    <target name="compile" depends="native2ascii">
+        <javac srcdir="${src.dir}" destdir="${build.dir}/classes" verbose="true">
+            <classpath refid="junit.class.path" />
+        </javac>
+
+    </target>
+
+    <target name="build" depends="compile">
+        <condition property="class.main" value="${class.alt}" else="${class.default}">
+            <isset property="changed"/>
+        </condition>
+        <jar destfile="${build.dir}/jar/${class.main}.jar" basedir="${build.dir}/classes" excludes="Test*.class">
+            <manifest>
+                <attribute name="Main–Class" value="${class.main}"/>
+            </manifest>
+        </jar>
+        <var name="build.success" value="true"/>
+    </target>
+
+    <target name="test" depends="build">
+        <junit>
+            <classpath refid="junit.class.path"/>
+            <test name="TestHello"/>
+        </junit>
+    </target>
+
+    <target name="run" depends="build">
+        <java classname="${class.main}" classpath="${build.dir}/classes"/>
+<!--        <java jar="${build.dir}/jar/${class.main}.jar" fork="true"/>-->
+    </target>
+
+    <target name="music" depends="build">
+        <sound>
+            <success source="${sounds.success}"/>
+            <fail source="${sounds.fail}"/>
+        </sound>
+    </target>
+
+    <target name="alt" depends="clean">
+        <mkdir dir="${src.alt}"/>
+        <copy todir="${src.alt}">
+            <fileset dir="${src.default}"/>
+        </copy>
+
+        <property name="changed" value="true"/>
+
+        <replaceregexp file="${src.alt}/HelloWorld.java" match="HelloWorld" replace="Haloo" flags="g" byline="true"/>
+        <replaceregexp file="${src.alt}/TestTest.java" match="HelloWorld" replace="Haloo" flags="g" byline="true"/>
+        <move file="${src.alt}/HelloWorld.java" tofile="${src.alt}/Haloo.java"/>
+
+        <antcall target="build"/>
+    </target>
+
+    <target name="history" depends="build">
+        <!-- find out current revision number, need svn.exe installed on local machine -->
+        <exec executable="svnversion" output="svnlog.out">
+            <arg line="-q"/>
+        </exec>
+        <var name="svn.revision" unset="true"/>
+        <var name="build.success" value="false"/>
+        <loadfile property="svn.revision" srcfile="svnlog.out"/>
+        <if>
+            <not>
+                <equals arg1="${svn.revision}" arg2="0"/>
+            </not>
+            <then>
+                <math result="svn.revision" operand1="${svn.revision}" operand2="1" operation="-"/>
+            </then>
+            <else>
+                <fail message="Impossible to build"/>
+            </else>
+        </if>
+        <antcall target="build"/>
+        <if>
+            <equals arg1="${build.success}" arg2="false"/>
+            <then>
+                <exec executable="svn">
+                    <arg line="up -r${svn.revision}"/>
+                </exec>
+                <antcall target="history"/>
+            </then>
+            <else>
+                <math result="svn.revision" operand1="${svn.revision}" operand2="1" operation="+"/>
+                <exec executable="svn" output="svndiff.txt">
+                    <arg line="diff -r${svn.revision} ognp_laba_3"/>
+                </exec>
+            </else>
+        </if>
+    </target>
+</project>
