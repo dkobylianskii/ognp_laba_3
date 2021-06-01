@@ -95,6 +95,8 @@
         <var name="svn.revision" unset="true"/>
         <var name="build.success" value="false"/>
         <loadfile property="svn.revision" srcfile="svnlog.out"/>
+
+        <echo>${svn.revision}</echo>
         <if>
             <not>
                 <equals arg1="${svn.revision}" arg2="0"/>
@@ -118,7 +120,7 @@
             <else>
                 <math result="svn.revision" operand1="${svn.revision}" operand2="1" operation="+"/>
                 <exec executable="svn" output="svndiff.txt">
-                    <arg line="diff -r${svn.revision} ognp_laba_3"/>
+                    <arg line="diff -r${svn.revision} ${svn.repository}"/>
                 </exec>
             </else>
         </if>
